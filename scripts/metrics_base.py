@@ -115,6 +115,10 @@ def process_result(proj: Project, result, output_csv_file, start_time_str, end_t
     #
     
     metric_rows = result['timepoints'][0]['metrics_rows']
+
+    if len(metric_rows) == 0:
+        msg = 'No rows for {} from {} to {}'.format(proj.name, start_time_str, end_time_str)
+        logging.info(msg)
     
     for row_group in metric_rows:
         env = 'nothing'

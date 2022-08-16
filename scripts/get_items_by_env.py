@@ -10,6 +10,8 @@ import datetime, time
 import metrics_base as mb
 from metrics_base import Project
 
+
+
 #
 # This script requires 1 environment variable
 # Go to your Rollbar account settings and creatE a read scope access token
@@ -25,41 +27,26 @@ def process_all():
     allowed_proj_token_names = ['metrics_api_token', 'read']
 
     projects = mb.get_project_objects(account_read_token, allowed_proj_token_names)
+    # look at the last 30 days  
     starttime_unix, finaltime_unix = get_start_and_final_time()
 
-    output_csv_file = 'all_items_by_proj_and_env.csv'
+    output_csv_file = 'occurrence_counts_by_proj_and_env_last_30_days.csv'
 
     if os.path.exists(output_csv_file):
-        os.rename(output_csv_file, time.mktime(datetime.datetime.now().timetuple()) + '_' + output_csv_file)
+        backup_file_name = '{}_{}'.format(time.mktime(datetime.datetime.now().timetuple()), output_csv_file)
+        os.rename(output_csv_file, backup_file_name)
 
-
-    # Get data in batches of batch_size seconds
-    batch_size = 60 * 60 * 24
 
     for proj in projects:
 
-        next_time = starttime_unix + batch_size
-        while next_time <= finaltime_unix:
-            result = get_items_by_env(proj, starttime_unix, next_time)
-            add_results_to_csv_file(proj, result, output_csv_file, starttime_unix, next_time)
-
-            if next_time >= finaltime_unix:
-                break
-
-
-            starttime_unix = next_time
-            next_time = next_time + batch_size
-
-            if next_time > finaltime_unix:
-                next_time = finaltime_unix
-
+        result = get_items_by_env(proj, starttime_unix, finaltime_unix)
+        add_results_to_csv_file(proj, result, output_csv_file, starttime_unix, finaltime_unix)
                 
-        
-    
-
 
 def get_start_and_final_time():
-    final_time = datetime.datetime.today()
+
+    # datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    final_time = datetime.datetime.now()
     start_time = final_time - datetime.timedelta(days=30)
 
     finaltime_unix = math.floor(time.mktime(final_time.timetuple()))   
