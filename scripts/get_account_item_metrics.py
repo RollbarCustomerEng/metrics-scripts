@@ -3,6 +3,7 @@ import json
 import logging
 import requests
 import os
+import datetime, time
 
 #
 # WARNING: This script uses a pre-production API
@@ -187,9 +188,14 @@ if __name__ == "__main__":
                     handlers=[logging.StreamHandler()]
                     )
 
-    start_unixtime = 1656629032 # late June 2022
-    end_unixtime = 1657147432 # early July 2022
-    create_csv_for_all_projects(start_unixtime, end_unixtime)
+    
+    now = datetime.datetime.now() 
+    last_week = now - datetime.timedelta(days=7)
+
+    now_unix = time.mktime(now.timetuple())   
+    last_week_unix = time.mktime(last_week.timetuple()) 
+
+    create_csv_for_all_projects(last_week_unix, now_unix)
 
     
 
