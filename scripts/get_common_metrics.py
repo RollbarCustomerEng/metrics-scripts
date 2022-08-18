@@ -95,6 +95,10 @@ def aggregate_metrics(item_metrics_list: list[ItemMetrics]):
     prod_occs = sum(im.occurrence_count for im in item_metrics_list if im.environment == 'production')
     print('Production occurrences ', prod_occs)
 
+    prod_error_occs = sum(im.occurrence_count for im in item_metrics_list \
+                        if im.environment == 'production' and im.level in ['error', 'critical'])
+    print('Production error occurrences ', prod_error_occs)
+
     return
 
 
