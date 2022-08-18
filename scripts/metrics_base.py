@@ -1,3 +1,4 @@
+from http.client import HTTPException
 import json
 import logging
 import requests
@@ -8,6 +9,23 @@ class Project:
         self.name = None
         self.token = None
 
+
+class ItemMetrics:
+
+    def __init__(self):
+        
+        self.project_id = None
+        self.project_name = None
+        self.start_time_unix = None
+        self.end_time_unix = None
+
+        self.id = None
+        self.counter = None
+        self.level = None
+        self.status = None
+        self.occurrence_count = None
+        self.environment = None
+        self.ip_address_count = None
 
 
 def get_all_enabled_projects(account_read_token):
@@ -107,6 +125,34 @@ def make_occ_metrics_api_call(proj: Project, query_data):
         msg = 'Error making request to Rollbar Metrics API project={}'.format(proj.name)
         logging.error(msg, exc_info=ex)
 
+
+def add_extra_info_to_metrics(proj: Project, item_metrics: ItemMetrics):
+    """
+    Add additional data to teh item metrics object
+    """
+
+    try:
+        
+        url = 'https://api.rollbar.com/api/1/item/{}'.format(item_metrics.id)
+        headers = {'X-Rollbar-Access-Token': proj.token, 'Content-Type': 'application/json'}
+
+        # GET request
+        resp = requests.get(url, headers=headers)
+        log = 'Get Item HTTP response status={}'.format(resp.status_code)
+        logging.info(log)
+
+        if resp.status_code == 200:
+            result = json.loads(resp.text)['result']
+            item_metrics.title = result['title']
+            item_metrics.assigned_user_id = result['assigned_user_id']
+        else:
+            raise Exception('Error making API call response={}'.format(resp.status_code))
+
+    except Exception as ex:
+        msg = 'Error making request to Rollbar Get item API project={}'.format(proj.name)
+        logging.error(msg, exc_info=ex)
+
+    return
 
 
 def process_result(proj: Project, result, output_csv_file, start_time_str, end_time_str):
