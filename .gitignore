@@ -1,2 +1,3 @@
 **/*.csv
 .vscode/launch.json
+scripts/.vscode/launch.json
