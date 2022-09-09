@@ -102,18 +102,18 @@ def aggregate_metrics(item_metrics_list: list[ItemMetrics]):
     return
 
 
-
 def process_all():
 
     final_time = datetime.datetime.now()
-    start_time = final_time - datetime.timedelta(days=1)
+    # Get metrics for last x days
+    start_time = final_time - datetime.timedelta(days=30)
 
     final_time_unix = math.floor(time.mktime(final_time.timetuple()))   
     start_time_unix = math.floor(time.mktime(start_time.timetuple()))
 
     p = Project()   
     p.id = 0
-    p.id = 'JS-Frontend'
+    p.name = 'JS-Frontend'
     p.token = os.environ['ROLLBAR_PROJECT_READ_TOKEN']
 
     item_metrics_list = get_item_metrics(p, start_time_unix, final_time_unix)

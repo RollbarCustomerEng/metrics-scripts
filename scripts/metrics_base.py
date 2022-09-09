@@ -3,6 +3,7 @@ import json
 import logging
 import requests
 
+
 class Project:
     def __init__(self):
         self.id = None
@@ -126,9 +127,63 @@ def make_occ_metrics_api_call(proj: Project, query_data):
         logging.error(msg, exc_info=ex)
 
 
+def get_all_projects(account_read_token):
+    # 
+    # Return a list with the project ids for all 
+    # enabled projects in an account
+    # 
+
+    url = 'https://api.rollbar.com/api/1/projects'
+    headers = {'X-Rollbar-Access-Token': account_read_token}
+
+    proj_list = []
+    try:
+        resp = requests.get(url, headers=headers)
+        log = '/api/1/projects status={}'.format(resp.status_code)
+        logging.info(log)
+
+        dct = json.loads(resp.text)['result']
+
+        for item in dct:
+            if item['status'] == 'enabled':
+                p = Project()
+                p.id = item['id']
+                p.name = item['name']
+                proj_list.append(p)
+        
+    except Exception as ex:
+        logging.error('Error making request to Rollbar Metrics API', exc_info=ex)
+
+    return proj_list
+
+
+def add_read_token_to_projects(proj_list, account_read_token, allowed_project_token_names):
+    #
+    # For each project object in proj_list add the token property
+    #
+
+    headers = {'X-Rollbar-Access-Token': account_read_token}
+
+    for proj in proj_list:
+        url = 'https://api.rollbar.com/api/1/project/{}/access_tokens'
+        url = url.format(proj.id)
+
+        resp = requests.get(url, headers=headers)
+        log = '{} /api/1/project/{}/access_tokens status={}'.format(proj.name, proj.id, resp.status_code)
+        logging.info(log)
+
+        token_list = json.loads(resp.text)['result']
+        for token in token_list:
+            if token['name'] in allowed_project_token_names and \
+                 len(token['scopes']) == 1 and \
+                 token['scopes'][0] == 'read':
+                proj.token = token['access_token']
+                continue
+
+
 def add_extra_info_to_metrics(proj: Project, item_metrics: ItemMetrics):
     """
-    Add additional data to teh item metrics object
+    Add additional data to the item metrics object
     """
 
     try:

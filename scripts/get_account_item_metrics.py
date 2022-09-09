@@ -5,18 +5,18 @@ import requests
 import os
 import datetime, time
 
-#
-# WARNING: This script uses a pre-production API
-#
+from metrics_base import get_all_projects
+from metrics_base import add_read_token_to_projects
+
 
 #
 # Get/Create your ACCOUNT_READ_SCOPE_ACCESS_TOKEN here
 # https://rollbar.com/settings/accounts/YOUR_ACCOUNT_SLUG/access_tokens/
 #
 # Execute these from a terminal to create an environment variable with you access tokem
-# export ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS=READ_SCOPE_ACCESS_TOKEN
+# export ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS=**********
 #
-ACCOUNT_READ_TOKEN = os.environ['ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS'] 
+ACCOUNT_READ_TOKEN = os.environ['ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS']
 
 #
 # We only look for project_access_tokens with these names
@@ -24,68 +24,14 @@ ACCOUNT_READ_TOKEN = os.environ['ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS']
 #
 ALLOWED_PROJECT_TOKEN_NAMES = ['read', 'metrics_api_token']
 
+
 class Project:
     def __init__(self):
         self.id = None
         self.name = None
         self.token = None
 
-
-def get_project_read_tokens(proj_list):
-    #
-    # For each project object in proj_list add the token property
-    #
-
-    headers = {'X-Rollbar-Access-Token': ACCOUNT_READ_TOKEN}
-
-    for proj in proj_list:
-        url = 'https://api.rollbar.com/api/1/project/{}/access_tokens'
-        url = url.format(proj.id)
-
-        resp = requests.get(url, headers=headers)
-        log = '{} /api/1/project/{}/access_tokens status={}'.format(proj.name, proj.id, resp.status_code)
-        logging.info(log)
-
-        token_list = json.loads(resp.text)['result']
-        for token in token_list:
-            if token['name'] in ALLOWED_PROJECT_TOKEN_NAMES and \
-                 len(token['scopes']) == 1 and \
-                 token['scopes'][0] == 'read':
-                proj.token = token['access_token']
-                continue
-
-
-def get_all_projects():
-    # 
-    # Return a list with the project ids for all 
-    # enabled projects in an account
-    # 
-
-    url = 'https://api.rollbar.com/api/1/projects'
-    headers = {'X-Rollbar-Access-Token': ACCOUNT_READ_TOKEN}
-
-    proj_list = []
-    try:
-        resp = requests.get(url, headers=headers)
-        log = '/api/1/projects status={}'.format(resp.status_code)
-        logging.info(log)
-
-        dct = json.loads(resp.text)['result']
-
-        for item in dct:
-            if item['status'] == 'enabled':
-                p = Project()
-                p.id = item['id']
-                p.name = item['name']
-                proj_list.append(p)
-        
-    except Exception as ex:
-        logging.error('Error making request to Rollbar Metrics API', exc_info=ex)
-
-    return proj_list
-
-
-def write_occurrences(proj_list, start_unixtime, end_unixtime):
+def write_occurrence_metrics_to_csv(proj_list, start_unixtime, end_unixtime):
     #
     # Write the occurrences for all projects to 
     # results.csv in the current working directory
@@ -130,7 +76,7 @@ def process_result(proj: Project, result, start_unixtime, end_unixtime):
 
         line = '{},{},{},{},{},{},{}\n'
         line = line.format(proj.name, proj.id, env, item_level,
-                           occ_count, start_unixtime, end_unixtime)
+                           occ_count, int(start_unixtime), int(end_unixtime))
 
         f = open('results.csv', 'a')
         f.writelines([line])
@@ -176,9 +122,10 @@ def make_occ_metrics_api_call(start_time, end_time, proj: Project):
 
 def create_csv_for_all_projects(start_unixtime, end_unixtime):
     
-    proj_list = get_all_projects()
-    get_project_read_tokens(proj_list)
-    write_occurrences(proj_list, start_unixtime, end_unixtime)
+    proj_list = get_all_projects(ACCOUNT_READ_TOKEN)
+    add_read_token_to_projects(proj_list, ACCOUNT_READ_TOKEN, ALLOWED_PROJECT_TOKEN_NAMES)
+
+    write_occurrence_metrics_to_csv(proj_list, start_unixtime, end_unixtime)
 
 
 if __name__ == "__main__":
@@ -188,9 +135,8 @@ if __name__ == "__main__":
                     handlers=[logging.StreamHandler()]
                     )
 
-    
     now = datetime.datetime.now() 
-    last_week = now - datetime.timedelta(days=7)
+    last_week = now - datetime.timedelta(days=1)
 
     now_unix = time.mktime(now.timetuple())   
     last_week_unix = time.mktime(last_week.timetuple()) 
