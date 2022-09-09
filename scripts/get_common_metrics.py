@@ -10,6 +10,25 @@ from metrics_base import Project
 from metrics_base import ItemMetrics
 import metrics_base as mb
 
+from metrics_base import get_all_projects
+from metrics_base import add_read_token_to_projects
+
+
+#
+# Get/Create your ACCOUNT_READ_SCOPE_ACCESS_TOKEN here
+# https://rollbar.com/settings/accounts/YOUR_ACCOUNT_SLUG/access_tokens/
+#
+# Execute these from a terminal to create an environment variable with you access tokem
+# export ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS=**********
+#
+ACCOUNT_READ_TOKEN = os.environ['ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS']
+
+#
+# We only look for project_access_tokens with these names
+# The project_access_tokens MUST be 'read' scope ONLY
+#
+ALLOWED_PROJECT_TOKEN_NAMES = ['read', 'metrics_api_token']
+
 
 def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
 
@@ -88,17 +107,19 @@ def get_metrics_from_response(proj, result, start_time_unix, end_time_unix):
 
     return item_metrics_list
 
-def aggregate_metrics(item_metrics_list: list[ItemMetrics]):
+def aggregate_metrics(item_metrics_list: list[ItemMetrics], environment):
 
     # Print additional aggregations as needed
     im: ItemMetrics
-    prod_occs = sum(im.occurrence_count for im in item_metrics_list if im.environment == 'production')
-    print('Production occurrences ', prod_occs)
+    env_occs = sum(im.occurrence_count for im in item_metrics_list if im.environment == environment)
+    env_occs = '{} occurrences {}'.format(environment, env_occs)
+    print(env_occs)
 
-    prod_error_occs = sum(im.occurrence_count for im in item_metrics_list \
-                        if im.environment == 'production' and im.level in ['error', 'critical'])
-    print('Production error occurrences ', prod_error_occs)
+    error_occs = sum(im.occurrence_count for im in item_metrics_list \
+                        if im.environment == environment and im.level in ['error', 'critical'])
 
+    error_occs = 'error/critical occurrences {}'.format(error_occs)
+    print(error_occs)
     return
 
 
@@ -106,18 +127,18 @@ def process_all():
 
     final_time = datetime.datetime.now()
     # Get metrics for last x days
-    start_time = final_time - datetime.timedelta(days=30)
+    start_time = final_time - datetime.timedelta(days=1)
 
+    # convert times to unix epoch integers
     final_time_unix = math.floor(time.mktime(final_time.timetuple()))   
     start_time_unix = math.floor(time.mktime(start_time.timetuple()))
 
-    p = Project()   
-    p.id = 0
-    p.name = 'JS-Frontend'
-    p.token = os.environ['ROLLBAR_PROJECT_READ_TOKEN']
+    proj_list = get_all_projects(ACCOUNT_READ_TOKEN)
+    add_read_token_to_projects(proj_list, ACCOUNT_READ_TOKEN, ALLOWED_PROJECT_TOKEN_NAMES)
 
-    item_metrics_list = get_item_metrics(p, start_time_unix, final_time_unix)
-    aggregate_metrics(item_metrics_list)
+    for proj in proj_list:
+        item_metrics_list = get_item_metrics(proj, start_time_unix, final_time_unix)
+        aggregate_metrics(item_metrics_list, 'production')
 
     print('Finished')
 
@@ -128,5 +149,4 @@ if __name__ == "__main__":
                     format='%(process)d-%(levelname)s-%(message)s',
                     handlers=[logging.StreamHandler()]
                     )
-
     process_all()
