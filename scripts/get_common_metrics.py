@@ -138,7 +138,11 @@ def process_all():
 
     for proj in proj_list:
         item_metrics_list = get_item_metrics(proj, start_time_unix, final_time_unix)
-        aggregate_metrics(item_metrics_list, 'production')
+
+
+
+        if len(item_metrics_list) > 0:
+            aggregate_metrics(item_metrics_list, 'production')
 
     print('Finished')
 
