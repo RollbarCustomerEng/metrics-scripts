@@ -1,3 +1,10 @@
+"""
+A file with methods for commonly requireed functionality when working with teh Rollbar Metrics API
+
+This file also includes stor light helper classes for storing metrics related data
+"""
+
+
 from http.client import HTTPException
 import json
 import logging
@@ -5,6 +12,10 @@ import requests
 
 
 class Project:
+    """
+    A small class to store Rollbar Project details
+    """
+
     def __init__(self):
         self.id = None
         self.name = None
@@ -12,6 +23,9 @@ class Project:
 
 
 class ItemMetrics:
+    """
+    A class that stores matric data for an item
+    """
 
     def __init__(self):
         
@@ -30,10 +44,13 @@ class ItemMetrics:
 
 
 def get_all_enabled_projects(account_read_token):
-    # 
-    # Return a list with the project ids for all 
-    # enabled projects in an account
-    # 
+    """
+    Arguments:
+    account_read_token: An Account level acces token with Read scope
+    
+    Returns:
+    A list with the project ids for all enabled projects in an account
+    """
 
     url = 'https://api.rollbar.com/api/1/projects'
     headers = {'X-Rollbar-Access-Token': account_read_token}
@@ -60,14 +77,17 @@ def get_all_enabled_projects(account_read_token):
 
 
 def get_project_objects_with_token(proj_list, account_read_token, allowed_token_names):
-    # 
-    # proj_list - List of partially initialized project objects
-    # account_read_token - An account level access token with Read scope
-    # allowed_token_names - List of alllowed token names. The allowed tokens must have Read scope ONLY
-    # 
-    # Returns:
-    # proj_list: List of project objects with valid read token property
-    #
+    """ 
+
+
+    Arguments:
+    proj_list - List of partially initialized project objects
+    account_read_token - An account level access token with Read scope
+    allowed_token_names - List of alllowed token names. The allowed tokens must have Read scope ONLY
+ 
+    Returns:
+    proj_list: List of project objects with valid read token property
+    """
 
 
     headers = {'X-Rollbar-Access-Token': account_read_token}
@@ -99,6 +119,17 @@ def get_project_objects_with_token(proj_list, account_read_token, allowed_token_
 
 
 def get_project_objects(account_read_token, allowed_token_names):
+    """
+    Use this method to get a list of Project objects
+
+    Arguments:
+    account_read_token - An account level access token with Read scope
+    allowed_token_names - Only a token with a name from the allowed list of names will be chosen
+                          Note: The token will be accepted if it has Read scope ONLY
+
+    Returns:
+    List of Project objects with id, name, and read_access_token
+    """
 
     p_list = get_all_enabled_projects(account_read_token)
     proj_list = get_project_objects_with_token(p_list, account_read_token, allowed_token_names)
@@ -107,8 +138,16 @@ def get_project_objects(account_read_token, allowed_token_names):
 
 def make_occ_metrics_api_call(proj: Project, query_data):
     """
-    Call Rollbar Metrics API. 
+    Use this method to return the data for the query passed as an argument
+
+    Arguments:
+    proj - A Project object (Requires name and token properties to be set)
+    query_data - A JSON object which defines the Metrics API query
+
+    Returns:
+    A dict with the Metrics API data
     """
+
     try:
         
         url = 'https://api.rollbar.com/api/1/metrics/occurrences'
@@ -128,10 +167,16 @@ def make_occ_metrics_api_call(proj: Project, query_data):
 
 
 def get_all_projects(account_read_token):
-    # 
-    # Return a list with the project ids for all 
-    # enabled projects in an account
-    # 
+    """
+    Use this method to get the list of Projects in an account
+
+    Arguments:
+    account_read_token - An Account level access token with Read scope
+
+    Returns:
+    List of Project object with id, name, and token properties populated 
+    """
+
 
     url = 'https://api.rollbar.com/api/1/projects'
     headers = {'X-Rollbar-Access-Token': account_read_token}
@@ -183,7 +228,14 @@ def add_read_token_to_projects(proj_list, account_read_token, allowed_project_to
 
 def add_extra_info_to_metrics(proj: Project, item_metrics: ItemMetrics):
     """
-    Add additional data to the item metrics object
+    Use this method to add additional data to the ItemMetrics object.
+    This method adds teh following fields to a partially populated ItemMetrcs object:
+    - title
+    - assigned_user_id
+
+    Arguments:
+    proj - A Project obect (with the token and name properties set)
+    item_metrics - A object with som emetrics for an Item already set
     """
 
     try:
@@ -207,13 +259,22 @@ def add_extra_info_to_metrics(proj: Project, item_metrics: ItemMetrics):
         msg = 'Error making request to Rollbar Get item API project={}'.format(proj.name)
         logging.error(msg, exc_info=ex)
 
+        return item_metrics
+
     return
 
 
 def process_result(proj: Project, result, output_csv_file, start_time_str, end_time_str):
-    #
-    # Write ccurrence data to results.csv for this project
-    #
+    """
+    Use this method to write metrics for Items in a Project to a CSV file
+
+    Arguments:
+    proj - A Project object (with name property set)
+    result - A dict with metrics data for 1 or more Items
+    output_csv_file - Name of teh CSV file to write results to
+    start_time_str - A string that represents the start of the time window for the metrics
+    end_time_str - A string that represents the end of the time window for the metrics
+    """
     
     metric_rows = result['timepoints'][0]['metrics_rows']
 
