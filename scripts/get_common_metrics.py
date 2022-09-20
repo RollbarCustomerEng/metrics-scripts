@@ -1,3 +1,21 @@
+"""
+Use this script to get common Item metrics for all single Rollbar Project for the last 1 day
+
+Usage:
+python3 get_common_metrics.py
+
+Output:
+A CSV file with the metrics
+
+Requirements:
+1. 
+The following environment variable needs to be set
+ROLLBAR_PROJECT_READ_ACCESS_TOKEN - A project level token with Read scope
+Example:
+export ROLLBAR_PROJECT_READ_ACCESS_TOKEN=**********
+
+"""
+
 import json
 import logging
 import math
@@ -15,19 +33,14 @@ from metrics_base import add_read_token_to_projects
 
 
 #
-# Get/Create your ACCOUNT_READ_SCOPE_ACCESS_TOKEN here
-# https://rollbar.com/settings/accounts/YOUR_ACCOUNT_SLUG/access_tokens/
+# Get/Create your ROLLBAR_PROJECT_READ_ACCESS_TOKEN here
+# https://rollbar.com/YOUR_ACCOUNT_SLUG/PROJECT_SLUG/settings/access_tokens/
 #
 # Execute these from a terminal to create an environment variable with you access tokem
-# export ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS=**********
+# export ROLLBAR_PROJECT_READ_ACCESS_TOKEN=**********
 #
-ACCOUNT_READ_TOKEN = os.environ['ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS']
+PROJECT_READ_TOKEN = os.environ['ROLLBAR_PROJECT_READ_ACCESS_TOKEN']
 
-#
-# We only look for project_access_tokens with these names
-# The project_access_tokens MUST be 'read' scope ONLY
-#
-ALLOWED_PROJECT_TOKEN_NAMES = ['read', 'metrics_api_token']
 
 
 def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
@@ -47,7 +60,7 @@ def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
              'filters': [
               {
                 'field': 'item_level',
-                'values': ['error', 'critical', 'warning', 'info'],
+                'values': ['error', 'critical', 'warning', 'info', 'debug'],
                 'operator': 'eq'
               }
               ]
@@ -107,23 +120,26 @@ def get_metrics_from_response(proj, result, start_time_unix, end_time_unix):
 
     return item_metrics_list
 
-def aggregate_metrics(item_metrics_list: list[ItemMetrics], environment):
+def print_metric_aggregates(item_metrics_list: list[ItemMetrics], environment_list, level_list):
+
+    if len(item_metrics_list) == 0:
+        return
 
     # Print additional aggregations as needed
     im: ItemMetrics
-    env_occs = sum(im.occurrence_count for im in item_metrics_list if im.environment == environment)
-    env_occs = '{} occurrences {}'.format(environment, env_occs)
-    print(env_occs)
+    env_occs = sum(im.occurrence_count for im in item_metrics_list if im.environment in environment_list)
+    msg = 'Environments: {}, Levels: All, Occurrences: {}'.format(environment_list, env_occs)
+    print(msg)
 
     error_occs = sum(im.occurrence_count for im in item_metrics_list \
-                        if im.environment == environment and im.level in ['error', 'critical'])
+                        if im.environment in environment_list and im.level in level_list)
 
-    error_occs = 'error/critical occurrences {}'.format(error_occs)
-    print(error_occs)
+    msg = 'Environments: {}, Levels: {}, Occurrences: {}'.format(environment_list, level_list, error_occs)
+    print(msg)
     return
 
 
-def process_all():
+def process_single_project():
 
     final_time = datetime.datetime.now()
     # Get metrics for last x days
@@ -133,19 +149,19 @@ def process_all():
     final_time_unix = math.floor(time.mktime(final_time.timetuple()))   
     start_time_unix = math.floor(time.mktime(start_time.timetuple()))
 
-    proj_list = get_all_projects(ACCOUNT_READ_TOKEN)
-    add_read_token_to_projects(proj_list, ACCOUNT_READ_TOKEN, ALLOWED_PROJECT_TOKEN_NAMES)
-
-    for proj in proj_list:
-        item_metrics_list = get_item_metrics(proj, start_time_unix, final_time_unix)
+    proj = Project()
+    proj.token = PROJECT_READ_TOKEN
+    item_metrics_list = get_item_metrics(proj, start_time_unix, final_time_unix)
 
 
-
-        if len(item_metrics_list) > 0:
-            aggregate_metrics(item_metrics_list, 'production')
+    print('')
+    print('Additional metrics aggregations')
+    print('')
+    print_metric_aggregates(item_metrics_list, ['production', 'qa'], ['error', 'critical'])
+    print_metric_aggregates(item_metrics_list, ['qa'], ['info'])
+    print_metric_aggregates(item_metrics_list, ['production'], ['info', 'debug'])
 
     print('Finished')
-
 
 if __name__ == "__main__":
 
@@ -153,4 +169,4 @@ if __name__ == "__main__":
                     format='%(process)d-%(levelname)s-%(message)s',
                     handlers=[logging.StreamHandler()]
                     )
-    process_all()
+    process_single_project()
