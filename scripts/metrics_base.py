@@ -174,7 +174,7 @@ def get_all_projects(account_read_token):
     account_read_token - An Account level access token with Read scope
 
     Returns:
-    List of Project object with id, name, and token properties populated 
+    List of Project object with id and name properties populated (Doesnt set the token property)
     """
 
 
