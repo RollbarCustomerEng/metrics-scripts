@@ -1,5 +1,5 @@
 """
-Use this script to get common Item metrics for all single Rollbar Project for the last 1 day
+Use this script to get common Item metrics for a single Rollbar Project for the last 1 day
 
 Usage:
 python3 get_common_item_metrics.py
