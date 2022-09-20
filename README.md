@@ -13,7 +13,7 @@ Some of the scripts choose the project access token at run time. It chooses the 
 Verify that you access tokens have an allowed name
 
 # Scripts
-The scripts are examples of using the Rollbar Metrics API. For detailed inofrmation on what each script does, go to the scripts folder and read the comment at the start of the script
+The scripts are examples of using the Rollbar Metrics API. For detailed information on what each script does, go to the scripts folder and read the comment at the start of the script
 
 
 # Requirements
