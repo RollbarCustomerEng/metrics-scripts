@@ -1,4 +1,27 @@
+"""
+Use this script to get teh Item metrics for all your Rollbar Projects for the last 1 day
 
+Usage:
+python3 get_account_item_metrics.py
+
+Output:
+A CSV file with the metrics
+
+Requirements:
+1. 
+The following environment variable needs to be set
+ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS - An account level token with Read scope
+Example:
+export ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS=**********
+
+
+2. 
+For each Rollbar Project you want nmetrics for there must 
+be a Read (ONLY) scope token with 1 of the following names
+
+['read', 'metrics_api_token']
+
+"""
 import json
 import logging
 import requests
