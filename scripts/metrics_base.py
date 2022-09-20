@@ -38,9 +38,54 @@ class ItemMetrics:
         self.counter = None
         self.level = None
         self.status = None
-        self.occurrence_count = None
         self.environment = None
+        self.occurrence_count = None
         self.ip_address_count = None
+
+
+    def __str__ (self):
+
+        class_str = 'id={} counter={} level={} status={} environment={}'
+        class_str += ' occurrence_count={} ip_address_count={}'
+        class_str = class_str.format(self.id,
+                            self.counter,
+                            self.level,
+                            self.status,
+                            self.environment,
+                            self.occurrence_count,
+                            self.ip_address_count)
+
+        return class_str
+
+    @staticmethod
+    def get_csv_column_headers():
+
+        headers = 'project_id,project_name,start_time_unix,end_time_unix,'
+        headers += 'id,counter,level,status,occurrence_count'
+        headers += 'environment,ip_address_count\r\n'
+
+        return headers
+
+
+    def get_csv_line(self):
+        """
+        Returns a comma separated list of data for a CSV
+        """
+
+        line = '{},{},{},{},{},{},{},{},{},{},{}\r\n'.format(
+                    self.project_id,
+                    self.project_name,
+                    self.start_time_unix,
+                    self.end_time_unix,
+                    self.id,
+                    self.counter,
+                    self.level,
+                    self.status,
+                    self.environment,
+                    self.occurrence_count,
+                    self.ip_address_count)
+
+        return line
 
 
 def get_all_enabled_projects(account_read_token):

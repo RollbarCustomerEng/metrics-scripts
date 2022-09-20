@@ -36,14 +36,24 @@ from metrics_base import add_read_token_to_projects
 # Get/Create your ROLLBAR_PROJECT_READ_ACCESS_TOKEN here
 # https://rollbar.com/YOUR_ACCOUNT_SLUG/PROJECT_SLUG/settings/access_tokens/
 #
-# Execute these from a terminal to create an environment variable with you access tokem
+# Execute this command from a terminal to create an environment variable with your access tokem
 # export ROLLBAR_PROJECT_READ_ACCESS_TOKEN=**********
 #
 PROJECT_READ_TOKEN = os.environ['ROLLBAR_PROJECT_READ_ACCESS_TOKEN']
 
 
-
 def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
+    """
+    Use this method to get Item metrics for a project for a given time window
+
+    Arguments:
+    proj - A Project object
+    start_time_unix - Start time winddow in unix epoch time (seconds)
+    end_time_unix - End time winddow in unix epoch time (seconds)
+
+    Returns:
+    A list of Item metrics
+    """
 
     query = query_data = {
             # epoch time in seconds
@@ -76,6 +86,19 @@ def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
 
 
 def get_metrics_from_response(proj, result, start_time_unix, end_time_unix):
+    """
+    Use this method to parse a metrics API response dict and format the response 
+    as a list of ItemMetric objects
+
+    Arguments:
+    proj - A Project object
+    result - A dict with the Metrics API call data
+    start_time_unix - Start time winddow in unix epoch time (seconds)
+    end_time_unix - End time winddow in unix epoch time (seconds)
+
+    Returns:
+    A list of ItemMetrics objects
+    """
 
     metric_rows = result['timepoints'][0]['metrics_rows']
 
@@ -120,9 +143,19 @@ def get_metrics_from_response(proj, result, start_time_unix, end_time_unix):
 
     return item_metrics_list
 
-def print_metric_aggregates(item_metrics_list: list[ItemMetrics], environment_list, level_list):
+
+def print_metric_aggregates(item_metrics_list, environment_list, level_list):
+    """
+    Use this method to print some aggregation of metics data
+
+    Arguments:
+    item_metrics_list - A list of ItemMetrics objects
+    environment_list -  A list of environment names e.g. staging, production etc.
+    level_list - A list of Item Levels  ['debug', 'info'. 'warning', 'error', 'critical'] 
+    """
 
     if len(item_metrics_list) == 0:
+        logging.info('The ItemMetrics list is empty')
         return
 
     # Print additional aggregations as needed
@@ -139,7 +172,26 @@ def print_metric_aggregates(item_metrics_list: list[ItemMetrics], environment_li
     return
 
 
+def write_metrics_to_csv(item_metrics_list):
+
+    im: ItemMetrics
+
+    line_list = []
+    line_list.append(ItemMetrics.get_csv_column_headers())
+    for im in item_metrics_list:
+        print(im)
+        line_list.append(im.get_csv_line())
+
+    output_csv_file = 'item_metrics.csv'
+    f = open(output_csv_file, 'a')
+    f.writelines(line_list)
+    f.close()
+
+
+
 def process_single_project():
+    """
+    """
 
     final_time = datetime.datetime.now()
     # Get metrics for last x days
@@ -153,6 +205,7 @@ def process_single_project():
     proj.token = PROJECT_READ_TOKEN
     item_metrics_list = get_item_metrics(proj, start_time_unix, final_time_unix)
 
+    write_metrics_to_csv(item_metrics_list)
 
     print('')
     print('Additional metrics aggregations')
