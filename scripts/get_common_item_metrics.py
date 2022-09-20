@@ -2,7 +2,7 @@
 Use this script to get common Item metrics for all single Rollbar Project for the last 1 day
 
 Usage:
-python3 get_common_metrics.py
+python3 get_common_item_metrics.py
 
 Output:
 A CSV file with the metrics
