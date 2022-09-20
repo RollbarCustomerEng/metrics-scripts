@@ -1,8 +1,9 @@
 """
-Use this script to get Occ for all single Rollbar Project for the last 30 day
+Use this script to get Occurrences for all Rollbar Projects in an account for the last 30 day
+Occurrence counts are separated by environment
 
 Usage:
-python3 get_common_item_metrics.py
+python3 get_occurrences_by_env.py
 
 Output:
 A CSV file with the metrics
@@ -116,7 +117,6 @@ if __name__ == "__main__":
                     format='%(process)d-%(levelname)s-%(message)s',
                     handlers=[logging.StreamHandler()]
                     )
-
     process_all()
 
     
