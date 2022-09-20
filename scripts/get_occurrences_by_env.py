@@ -1,3 +1,21 @@
+"""
+Use this script to get Occ for all single Rollbar Project for the last 30 day
+
+Usage:
+python3 get_common_item_metrics.py
+
+Output:
+A CSV file with the metrics
+
+Requirements:
+1. 
+The following environment variable needs to be set
+ROLLBAR_PROJECT_READ_ACCESS_TOKEN - A project level token with Read scope
+Example:
+export ROLLBAR_PROJECT_READ_ACCESS_TOKEN=**********
+
+"""
+
 
 import json
 import logging
@@ -69,7 +87,7 @@ def get_items_by_env(proj, starttime_unix, endtime_unix):
              'filters': [
               {
                 'field': 'item_level',
-                'values': ['error', 'critical', 'warning', 'info'],
+                'values': ['error', 'critical', 'warning', 'info', 'debug'],
                 'operator': 'eq'
               }
               ]
