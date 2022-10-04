@@ -48,12 +48,6 @@ ACCOUNT_READ_TOKEN = os.environ['ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS']
 ALLOWED_PROJECT_TOKEN_NAMES = ['read', 'metrics_api_token']
 
 
-class Project:
-    def __init__(self):
-        self.id = None
-        self.name = None
-        self.token = None
-
 def write_occurrence_metrics_to_csv(proj_list, start_unixtime, end_unixtime):
     #
     # Write the occurrences for all projects to 
@@ -75,7 +69,7 @@ def write_occurrence_metrics_to_csv(proj_list, start_unixtime, end_unixtime):
             logging.exception(msg, exc_info=ex)
 
 
-def process_result(proj: Project, result, start_unixtime, end_unixtime):
+def process_result(proj, result, start_unixtime, end_unixtime):
     #
     # Write ccurrence data to results.csv for this project
     #
@@ -106,7 +100,7 @@ def process_result(proj: Project, result, start_unixtime, end_unixtime):
         f.close()
 
 
-def make_occ_metrics_api_call(start_time, end_time, proj: Project):
+def make_occ_metrics_api_call(start_time, end_time, proj):
     """
     Call Rollbar Metrics API. 
     """
@@ -159,12 +153,12 @@ if __name__ == "__main__":
                     )
 
     now = datetime.datetime.now() 
-    last_week = now - datetime.timedelta(days=1)
+    last_day = now - datetime.timedelta(days=1)
 
     now_unix = time.mktime(now.timetuple())   
-    last_week_unix = time.mktime(last_week.timetuple()) 
+    last_day_unix = time.mktime(last_day.timetuple()) 
 
-    create_csv_for_all_projects(last_week_unix, now_unix)
+    create_csv_for_all_projects(last_day_unix, now_unix)
 
     
 

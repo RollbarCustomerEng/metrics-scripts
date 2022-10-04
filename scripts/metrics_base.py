@@ -11,6 +11,7 @@ import logging
 import requests
 
 
+
 class Project:
     """
     A small class to store Rollbar Project details
@@ -35,19 +36,22 @@ class ItemMetrics:
         self.end_time_unix = None
 
         self.id = None
+        self.title = None
         self.counter = None
         self.level = None
         self.status = None
         self.environment = None
+        self.assigned_user_id = None
         self.occurrence_count = None
         self.ip_address_count = None
 
 
     def __str__ (self):
 
-        class_str = 'id={} counter={} level={} status={} environment={}'
+        class_str = 'id={} title={} counter={} level={} status={} environment={}'
         class_str += ' occurrence_count={} ip_address_count={}'
         class_str = class_str.format(self.id,
+                            self.title,
                             self.counter,
                             self.level,
                             self.status,
@@ -86,6 +90,110 @@ class ItemMetrics:
                     self.ip_address_count)
 
         return line
+
+
+def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
+    """
+    Use this method to get Item metrics for a project for a given time window
+
+    Arguments:
+    proj - A Project object
+    start_time_unix - Start time winddow in unix epoch time (seconds)
+    end_time_unix - End time winddow in unix epoch time (seconds)
+
+    Returns:
+    A list of Item metrics
+    """
+
+    query = query_data = {
+            # epoch time in seconds
+            'start_time': start_time_unix,
+            'end_time':  end_time_unix,
+            'group_by': ['environment', 'item_id', 'item_counter', 'item_level', 'item_status'],
+             'aggregates': [
+                {
+                    'field': 'ip_address',
+                    'function': 'count_distinct',
+                    'alias': 'ip_address_count'
+                }
+                ],
+             'filters': [
+              {
+                'field': 'item_level',
+                'values': ['critical', 'error', 'warning', 'info', 'debug'],
+                'operator': 'eq'
+              }
+              ]
+            }
+    result = make_occ_metrics_api_call(proj, query_data)
+    if result is None:
+        return []
+
+    metrics_list = get_metrics_from_response(proj, result, start_time_unix, end_time_unix)
+
+    # Add title and assigned_user_id - by calling Rollbar get_item API
+    # for im in metrics_list:
+    #    add_extra_info_to_metrics(proj, im)
+
+    return metrics_list
+def get_metrics_from_response(proj, result, start_time_unix, end_time_unix):
+    """
+    Use this method to parse a metrics API response dict and format the response 
+    as a list of ItemMetric objects
+
+    Arguments:
+    proj - A Project object
+    result - A dict with the Metrics API call data
+    start_time_unix - Start time winddow in unix epoch time (seconds)
+    end_time_unix - End time winddow in unix epoch time (seconds)
+
+    Returns:
+    A list of ItemMetrics objects
+    """
+
+    metric_rows = result['timepoints'][0]['metrics_rows']
+
+    if len(metric_rows) == 0:
+        msg = 'No rows for the time range from {} to {}'.format(start_time_unix, end_time_unix)
+        logging.info(msg)
+    
+    item_metrics_list = []
+    for row_group in metric_rows:
+        
+        im = ItemMetrics()
+        im.project_id = proj.id
+        im.project_name = proj.name
+        im.start_time_unix = start_time_unix
+        im.end_time_unix = end_time_unix
+
+        for row in row_group:
+
+            if row['field'] == 'item_id':
+                im.id = row['value']
+
+            if row['field'] == 'item_counter':
+                im.counter = row['value']
+
+            if row['field'] == 'environment':
+                im.environment = row['value']
+
+            if row['field'] == 'item_level':
+                im.level = row['value']
+
+            if row['field'] == 'item_status':
+                im.status = row['value']
+
+            if row['field'] == 'occurrence_count':
+                im.occurrence_count = row['value']
+
+            if row['field'] == 'ip_address_count':
+                im.ip_address_count = row['value']
+
+        # print(im.id, im.counter, im.environment, im.status, im.level, im.occurrence_count)
+        item_metrics_list.append(im)
+
+    return item_metrics_list
+
 
 
 def get_all_enabled_projects(account_read_token):
@@ -203,8 +311,11 @@ def make_occ_metrics_api_call(proj: Project, query_data):
         log = '/api/1/metrics/occurrences proj={} status={}'.format(proj.name, resp.status_code)
         logging.info(log)
 
-        result = json.loads(resp.text)['result']
-        return result
+        if resp.status_code == 200:
+            result = json.loads(resp.text)['result']
+            return result
+        else:
+            return None
 
     except Exception as ex:
         msg = 'Error making request to Rollbar Metrics API project={}'.format(proj.name)
@@ -262,7 +373,13 @@ def add_read_token_to_projects(proj_list, account_read_token, allowed_project_to
         log = '{} /api/1/project/{}/access_tokens status={}'.format(proj.name, proj.id, resp.status_code)
         logging.info(log)
 
-        token_list = json.loads(resp.text)['result']
+        resp_dict = json.loads(resp.text)
+
+        if resp_dict['err'] != 0:
+            logging.error('Failed o get access token for project: %s', proj.name)
+            continue
+        
+        token_list = resp_dict['result']
         for token in token_list:
             if token['name'] in allowed_project_token_names and \
                  len(token['scopes']) == 1 and \
@@ -290,15 +407,20 @@ def add_extra_info_to_metrics(proj: Project, item_metrics: ItemMetrics):
 
         # GET request
         resp = requests.get(url, headers=headers)
-        log = 'Get Item HTTP response status={}'.format(resp.status_code)
-        logging.info(log)
+        
+        if resp.status_code != 200:
+            log = 'Get Item HTTP response status={}'.format(resp.status_code)
+            logging.info(log)
 
         if resp.status_code == 200:
             result = json.loads(resp.text)['result']
             item_metrics.title = result['title']
             item_metrics.assigned_user_id = result['assigned_user_id']
         else:
-            raise Exception('Error making API call response={}'.format(resp.status_code))
+            msg = 'Error getting extra info for metrics id={} counter={} project={} status_code={}'
+            msg = msg.format(item_metrics.id, item_metrics.counter,
+                             item_metrics.project_name, resp.status_code)
+            raise Exception(msg)
 
     except Exception as ex:
         msg = 'Error making request to Rollbar Get item API project={}'.format(proj.name)
