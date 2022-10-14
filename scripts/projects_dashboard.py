@@ -26,7 +26,7 @@ Requirements:
 
 export ACCOUNT_READ_ACCESS_TOKEN_FOR_METRICS=MyAccountAccessTokenWithReadScope
 
-2. Review the DAYS variable. This is the number fo days teh script gets data for
+2. Review the DAYS variable. This is the number fo days the script gets data for
 
 3. Review the TOP_ITEM_LIST. The number of items to display in the table
 
@@ -54,7 +54,7 @@ DAYS = 30
 TOP_ITEM_LIST = 10
 
 # Field to sort by. For example 'occurrence_count', 'ip_address_count' etc.
-SORT_FIELD = 'ip_address_count'
+SORT_FIELD = 'occurrence_count'
 
 
 def get_projects():
