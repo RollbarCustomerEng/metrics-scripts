@@ -96,8 +96,6 @@ def print_metrics(df_orig):
     # truncate the title
     df['title'] = df['title'].str.slice(0, 20)
 
-
-    # df = df.nlargest(TOP_ITEM_LIST, 'ip_address_count')
     df = df.nlargest(TOP_ITEM_LIST, SORT_FIELD)
 
     print(tabulate(df, headers='keys', tablefmt='grid'))   

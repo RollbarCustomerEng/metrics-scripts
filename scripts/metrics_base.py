@@ -109,12 +109,17 @@ def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
             # epoch time in seconds
             'start_time': start_time_unix,
             'end_time':  end_time_unix,
-            'group_by': ['environment', 'item_id', 'item_counter', 'item_level', 'item_status'],
+            'group_by': ['environment', 'item_id', 'item_counter', 'item_level', 'item_status', 'item_title'],
              'aggregates': [
                 {
                     'field': 'ip_address',
                     'function': 'count_distinct',
                     'alias': 'ip_address_count'
+                },
+                 {
+                    'field': 'person_id',
+                    'function': 'count_distinct',
+                    'alias': 'person_count'
                 }
                 ],
              'filters': [
@@ -125,13 +130,15 @@ def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
               }
               ]
             }
+
+
     result = make_occ_metrics_api_call(proj, query_data)
     if result is None:
         return []
 
     metrics_list = get_metrics_from_response(proj, result, start_time_unix, end_time_unix)
 
-    # Add title and assigned_user_id - by calling Rollbar get_item API
+    # Add assigned_user_id - by calling Rollbar get_item API
     # for im in metrics_list:
     #    add_extra_info_to_metrics(proj, im)
 
@@ -170,6 +177,9 @@ def get_metrics_from_response(proj, result, start_time_unix, end_time_unix):
 
             if row['field'] == 'item_id':
                 im.id = row['value']
+
+            if row['field'] == 'item_title':
+                im.title = row['value']
 
             if row['field'] == 'item_counter':
                 im.counter = row['value']
@@ -391,7 +401,7 @@ def add_read_token_to_projects(proj_list, account_read_token, allowed_project_to
 def add_extra_info_to_metrics(proj: Project, item_metrics: ItemMetrics):
     """
     Use this method to add additional data to the ItemMetrics object.
-    This method adds teh following fields to a partially populated ItemMetrcs object:
+    This method adds the following fields to a partially populated ItemMetrcs object:
     - title
     - assigned_user_id
 
@@ -414,7 +424,6 @@ def add_extra_info_to_metrics(proj: Project, item_metrics: ItemMetrics):
 
         if resp.status_code == 200:
             result = json.loads(resp.text)['result']
-            item_metrics.title = result['title']
             item_metrics.assigned_user_id = result['assigned_user_id']
         else:
             msg = 'Error getting extra info for metrics id={} counter={} project={} status_code={}'
