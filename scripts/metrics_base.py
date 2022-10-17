@@ -65,7 +65,7 @@ class ItemMetrics:
     def get_csv_column_headers():
 
         headers = 'project_id,project_name,start_time_unix,end_time_unix,'
-        headers += 'id,counter,level,status,occurrence_count'
+        headers += 'id,counter,level,status,occurrence_count,'
         headers += 'environment,ip_address_count,assigned_user\r\n'
 
         return headers

@@ -86,7 +86,7 @@ def write_metrics_to_csv(item_metrics_list):
         line_list.append(im.get_csv_line())
 
     output_csv_file = 'item_metrics.csv'
-    f = open(output_csv_file, 'a')
+    f = open(output_csv_file, 'w')
     f.writelines(line_list)
     f.close()
 
@@ -106,16 +106,20 @@ def process_single_project():
 
     proj = Project()
     proj.token = PROJECT_READ_TOKEN
+
+    
     item_metrics_list = get_item_metrics(proj, start_time_unix, final_time_unix, add_assigned_users=True)
 
     write_metrics_to_csv(item_metrics_list)
 
+    """
     print('')
     print('Additional metrics aggregations')
     print('')
     print_metric_aggregates(item_metrics_list, ['production', 'qa'], ['error', 'critical'])
     print_metric_aggregates(item_metrics_list, ['qa'], ['info'])
     print_metric_aggregates(item_metrics_list, ['production'], ['info', 'debug'])
+    """
 
     print('Finished')
 
