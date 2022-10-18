@@ -30,6 +30,7 @@ import metrics_base as mb
 
 from metrics_base import get_all_projects
 from metrics_base import add_read_token_to_projects
+from metrics_base import get_item_metrics
 
 
 #
@@ -85,7 +86,7 @@ def write_metrics_to_csv(item_metrics_list):
         line_list.append(im.get_csv_line())
 
     output_csv_file = 'item_metrics.csv'
-    f = open(output_csv_file, 'a')
+    f = open(output_csv_file, 'w')
     f.writelines(line_list)
     f.close()
 
@@ -97,7 +98,7 @@ def process_single_project():
 
     final_time = datetime.datetime.now()
     # Get metrics for last x days
-    start_time = final_time - datetime.timedelta(days=1)
+    start_time = final_time - datetime.timedelta(days=60)
 
     # convert times to unix epoch integers
     final_time_unix = math.floor(time.mktime(final_time.timetuple()))   
@@ -105,16 +106,20 @@ def process_single_project():
 
     proj = Project()
     proj.token = PROJECT_READ_TOKEN
-    item_metrics_list = get_item_metrics(proj, start_time_unix, final_time_unix)
+
+    
+    item_metrics_list = get_item_metrics(proj, start_time_unix, final_time_unix, add_assigned_users=True)
 
     write_metrics_to_csv(item_metrics_list)
 
+    """
     print('')
     print('Additional metrics aggregations')
     print('')
     print_metric_aggregates(item_metrics_list, ['production', 'qa'], ['error', 'critical'])
     print_metric_aggregates(item_metrics_list, ['qa'], ['info'])
     print_metric_aggregates(item_metrics_list, ['production'], ['info', 'debug'])
+    """
 
     print('Finished')
 

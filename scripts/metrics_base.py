@@ -65,8 +65,8 @@ class ItemMetrics:
     def get_csv_column_headers():
 
         headers = 'project_id,project_name,start_time_unix,end_time_unix,'
-        headers += 'id,counter,level,status,occurrence_count'
-        headers += 'environment,ip_address_count\r\n'
+        headers += 'id,counter,level,status,occurrence_count,'
+        headers += 'environment,ip_address_count,assigned_user\r\n'
 
         return headers
 
@@ -76,7 +76,7 @@ class ItemMetrics:
         Returns a comma separated list of data for a CSV
         """
 
-        line = '{},{},{},{},{},{},{},{},{},{},{}\r\n'.format(
+        line = '{},{},{},{},{},{},{},{},{},{},{},{}\r\n'.format(
                     self.project_id,
                     self.project_name,
                     self.start_time_unix,
@@ -87,12 +87,13 @@ class ItemMetrics:
                     self.status,
                     self.environment,
                     self.occurrence_count,
-                    self.ip_address_count)
+                    self.ip_address_count,
+                    self.assigned_user_id)
 
         return line
 
 
-def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
+def get_item_metrics(proj: Project, start_time_unix, end_time_unix, add_assigned_users=False):
     """
     Use this method to get Item metrics for a project for a given time window
 
@@ -109,12 +110,17 @@ def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
             # epoch time in seconds
             'start_time': start_time_unix,
             'end_time':  end_time_unix,
-            'group_by': ['environment', 'item_id', 'item_counter', 'item_level', 'item_status'],
+            'group_by': ['environment', 'item_id', 'item_counter', 'item_level', 'item_status', 'item_title'],
              'aggregates': [
                 {
                     'field': 'ip_address',
                     'function': 'count_distinct',
                     'alias': 'ip_address_count'
+                },
+                 {
+                    'field': 'person_id',
+                    'function': 'count_distinct',
+                    'alias': 'person_count'
                 }
                 ],
              'filters': [
@@ -125,17 +131,25 @@ def get_item_metrics(proj: Project, start_time_unix, end_time_unix):
               }
               ]
             }
+
+
     result = make_occ_metrics_api_call(proj, query_data)
     if result is None:
         return []
 
     metrics_list = get_metrics_from_response(proj, result, start_time_unix, end_time_unix)
 
-    # Add title and assigned_user_id - by calling Rollbar get_item API
-    # for im in metrics_list:
-    #    add_extra_info_to_metrics(proj, im)
+    logging.info('Number of items in response=%s', len(metrics_list))
+
+    if add_assigned_users is False:
+        return metrics_list
+
+    # Add assigned_user_id - by calling Rollbar get_item API
+    for im in metrics_list:
+        add_extra_info_to_metrics(proj, im)
 
     return metrics_list
+    
 def get_metrics_from_response(proj, result, start_time_unix, end_time_unix):
     """
     Use this method to parse a metrics API response dict and format the response 
@@ -170,6 +184,9 @@ def get_metrics_from_response(proj, result, start_time_unix, end_time_unix):
 
             if row['field'] == 'item_id':
                 im.id = row['value']
+
+            if row['field'] == 'item_title':
+                im.title = row['value']
 
             if row['field'] == 'item_counter':
                 im.counter = row['value']
@@ -391,7 +408,7 @@ def add_read_token_to_projects(proj_list, account_read_token, allowed_project_to
 def add_extra_info_to_metrics(proj: Project, item_metrics: ItemMetrics):
     """
     Use this method to add additional data to the ItemMetrics object.
-    This method adds teh following fields to a partially populated ItemMetrcs object:
+    This method adds the following fields to a partially populated ItemMetrcs object:
     - title
     - assigned_user_id
 
@@ -407,20 +424,18 @@ def add_extra_info_to_metrics(proj: Project, item_metrics: ItemMetrics):
 
         # GET request
         resp = requests.get(url, headers=headers)
-        
-        if resp.status_code != 200:
-            log = 'Get Item HTTP response status={}'.format(resp.status_code)
-            logging.info(log)
+
+        log = 'Get Item HTTP response status={}'.format(resp.status_code)
+        logging.info(log)
 
         if resp.status_code == 200:
             result = json.loads(resp.text)['result']
-            item_metrics.title = result['title']
             item_metrics.assigned_user_id = result['assigned_user_id']
         else:
             msg = 'Error getting extra info for metrics id={} counter={} project={} status_code={}'
             msg = msg.format(item_metrics.id, item_metrics.counter,
                              item_metrics.project_name, resp.status_code)
-            raise Exception(msg)
+            logging.error(msg)
 
     except Exception as ex:
         msg = 'Error making request to Rollbar Get item API project={}'.format(proj.name)
